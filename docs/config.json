@@ -768,9 +768,6 @@
         {
           "title": "Single Sign-On (SSO)",
           "slug": "/enterprise/sso/",
-          "hideInScopes": [
-            "oss"
-          ],
           "entries": [
             {
               "title": "Azure Active Directory (AD)",
