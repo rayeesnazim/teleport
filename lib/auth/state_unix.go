@@ -22,13 +22,18 @@ package auth
 import (
 	"context"
 
+	"github.com/gravitational/teleport/lib/backend"
+	"github.com/gravitational/teleport/lib/backend/kubernetes"
 	"github.com/gravitational/teleport/lib/backend/lite"
-
 	"github.com/gravitational/trace"
 )
 
 // NewProcessStorage returns a new instance of the process storage.
 func NewProcessStorage(ctx context.Context, path string) (*ProcessStorage, error) {
+	var (
+		identityStorage stateBackend
+	)
+
 	if path == "" {
 		return nil, trace.BadParameter("missing parameter path")
 	}
@@ -38,9 +43,45 @@ func NewProcessStorage(ctx context.Context, path string) (*ProcessStorage, error
 		EventsOff: true,
 		Sync:      lite.SyncFull,
 	})
+
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 
-	return &ProcessStorage{Backend: litebk}, nil
+	if kubernetes.InKubeCluster() {
+		kubeSecret, err := kubernetes.New()
+		if err != nil {
+			return nil, trace.Wrap(err)
+		}
+
+		if !kubeSecret.Exists(ctx) {
+			compatibilityLayer(ctx, kubeSecret, litebk)
+		}
+
+		identityStorage = kubeSecret
+	} else {
+		identityStorage = litebk
+	}
+
+	return &ProcessStorage{Backend: litebk, stateStorage: identityStorage}, nil
+}
+
+func compatibilityLayer(ctx context.Context, stateBk stateBackend, litebk *lite.Backend) {
+	copyDataFromLocalIntoKube(ctx, stateBk, litebk, idsPrefix)
+	copyDataFromLocalIntoKube(ctx, stateBk, litebk, statesPrefix)
+
+}
+
+func copyDataFromLocalIntoKube(ctx context.Context, stateBk stateBackend, litebk *lite.Backend, prefix string) {
+	results, err := litebk.GetRange(ctx, backend.Key(prefix), backend.RangeEnd(backend.Key(prefix)), backend.NoLimit)
+	if err != nil {
+		return
+	}
+	for _, item := range results.Items {
+		if _, err := stateBk.Put(ctx, item); err != nil {
+			// TODO: log this lines
+			_ = err
+		}
+	}
+
 }
