@@ -2661,7 +2661,7 @@ func TestExportingTraces(t *testing.T) {
 			tt.spanAssertion(t, collector.Spans())
 		})
 	}
-=======
+
 func TestShowSessions(t *testing.T) {
 	expected := `[
     {
