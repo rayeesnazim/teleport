@@ -437,6 +437,10 @@
             {
               "title": "teleport-kube-agent",
               "slug": "/kubernetes-access/helm/reference/teleport-kube-agent/"
+            },
+            {
+              "title": "teleport-plugin-slack",
+              "slug": "/kubernetes-access/helm/reference/teleport-plugin-slack/"
             }
           ]
         },
