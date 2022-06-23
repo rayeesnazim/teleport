@@ -1328,6 +1328,11 @@
       "source": "/kubernetes-access/helm/guides/migration/",
       "destination": "/setup/helm-deployments/migration/",
       "permanent": true
+    },
+    {
+      "source": "/access-controls/guides/u2f/",
+      "destination": "/access-controls/guides/webauthn/",
+      "permanent": true
     }
   ]
 }
