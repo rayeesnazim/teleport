@@ -61,7 +61,7 @@ func (s *tcpServer) handleConnection(ctx context.Context, clientConn net.Conn, i
 	defer func() {
 		err = s.emitEndEvent(ctx, identity, app)
 		if err != nil {
-			s.log.WithError(err).Warn("Failed to emit session end event for app %v.", app.GetName())
+			s.log.WithError(err).Warnf("Failed to emit session end event for app %v.", app.GetName())
 		}
 	}()
 	err = utils.ProxyConn(ctx, clientConn, serverConn)

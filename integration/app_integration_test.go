@@ -1434,7 +1434,7 @@ func (p *pack) startLocalProxy(t *testing.T, publicAddr, clusterName string) str
 
 	proxy, err := alpnproxy.NewLocalProxy(alpnproxy.LocalProxyConfig{
 		RemoteProxyAddr:    net.JoinHostPort(Loopback, p.rootCluster.GetPortWeb()),
-		Protocol:           alpncommon.ProtocolTCP,
+		Protocols:          []alpncommon.Protocol{alpncommon.ProtocolTCP},
 		InsecureSkipVerify: true,
 		Listener:           listener,
 		ParentContext:      context.Background(),
