@@ -33,6 +33,7 @@ import (
 
 	"github.com/gravitational/teleport/api/client/webclient"
 	"github.com/gravitational/teleport/api/profile"
+	"github.com/gravitational/teleport/api/types"
 	"github.com/gravitational/teleport/api/utils/keypaths"
 	libclient "github.com/gravitational/teleport/lib/client"
 	"github.com/gravitational/teleport/lib/client/db/dbcmd"
@@ -391,6 +392,13 @@ func mkLocalProxyCerts(certFile, keyFile string) ([]tls.Certificate, error) {
 	return []tls.Certificate{cert}, nil
 }
 
+func alpnProtocolForApp(app types.Application) alpncommon.Protocol {
+	if app.IsTCP() {
+		return alpncommon.ProtocolTCP
+	}
+	return alpncommon.ProtocolHTTP
+}
+
 func onProxyCommandApp(cf *CLIConf) error {
 	tc, err := makeClient(cf, false)
 	if err != nil {
@@ -405,11 +413,6 @@ func onProxyCommandApp(cf *CLIConf) error {
 	app, err := getRegisteredApp(cf, tc)
 	if err != nil {
 		return trace.Wrap(err)
-	}
-
-	protocol := alpncommon.ProtocolHTTP
-	if app.IsTCP() {
-		protocol = alpncommon.ProtocolTCP
 	}
 
 	address, err := utils.ParseAddr(tc.WebProxyAddr)
@@ -430,7 +433,7 @@ func onProxyCommandApp(cf *CLIConf) error {
 	lp, err := alpnproxy.NewLocalProxy(alpnproxy.LocalProxyConfig{
 		Listener:           listener,
 		RemoteProxyAddr:    tc.WebProxyAddr,
-		Protocols:          []alpncommon.Protocol{protocol},
+		Protocols:          []alpncommon.Protocol{alpnProtocolForApp(app)},
 		InsecureSkipVerify: cf.InsecureSkipVerify,
 		ParentContext:      cf.Context,
 		SNI:                address.Host(),

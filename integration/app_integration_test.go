@@ -974,6 +974,7 @@ func newTCPServer(t *testing.T, handleConn func(net.Conn)) net.Listener {
 			}
 			if err != nil && !utils.IsOKNetworkError(err) {
 				t.Error(err)
+				return
 			}
 		}
 	}()

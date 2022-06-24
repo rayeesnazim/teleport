@@ -63,6 +63,8 @@ type Application interface {
 	IsAWSConsole() bool
 	// IsTCP returns true if this app represents a TCP endpoint.
 	IsTCP() bool
+	// GetProtocol returns the application protocol.
+	GetProtocol() string
 	// GetAWSAccountID returns value of label containing AWS account ID on this app.
 	GetAWSAccountID() string
 	// Copy returns a copy of this app resource.
@@ -239,6 +241,14 @@ func (a *AppV3) IsAWSConsole() bool {
 // IsTCP returns true if this app represents a TCP endpoint.
 func (a *AppV3) IsTCP() bool {
 	return strings.HasPrefix(a.Spec.URI, "tcp://")
+}
+
+// GetProtocol returns the application protocol.
+func (a *AppV3) GetProtocol() string {
+	if a.IsTCP() {
+		return "TCP"
+	}
+	return "HTTP"
 }
 
 // GetAWSAccountID returns value of label containing AWS account ID on this app.

@@ -20,7 +20,7 @@ import (
 	"context"
 	"io"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/gravitational/trace"
 )
 
 // ProxyConn launches a double-copy loop that proxies traffic between the
@@ -48,16 +48,17 @@ func ProxyConn(ctx context.Context, client, server io.ReadWriteCloser) error {
 		errCh <- err
 	}()
 
+	var errors []error
 	for i := 0; i < 2; i++ {
 		select {
 		case err := <-errCh:
 			if err != nil && !IsOKNetworkError(err) {
-				log.Warnf("%v", err)
+				errors = append(errors, err)
 			}
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		}
 	}
 
-	return nil
+	return trace.NewAggregate(errors...)
 }

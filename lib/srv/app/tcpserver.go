@@ -23,14 +23,13 @@ import (
 	apidefaults "github.com/gravitational/teleport/api/defaults"
 	apitypes "github.com/gravitational/teleport/api/types"
 	apievents "github.com/gravitational/teleport/api/types/events"
-	"github.com/sirupsen/logrus"
-
 	"github.com/gravitational/teleport/lib/auth"
 	"github.com/gravitational/teleport/lib/events"
 	"github.com/gravitational/teleport/lib/tlsca"
 	"github.com/gravitational/teleport/lib/utils"
 
 	"github.com/gravitational/trace"
+	"github.com/sirupsen/logrus"
 )
 
 type tcpServer struct {
@@ -48,7 +47,10 @@ func (s *tcpServer) handleConnection(ctx context.Context, clientConn net.Conn, i
 	if addr.AddrNetwork != "tcp" {
 		return trace.BadParameter(`unexpected app %q address network, expected "tcp": %+v`, app.GetName(), addr)
 	}
-	serverConn, err := net.Dial(addr.AddrNetwork, addr.String())
+	dialer := net.Dialer{
+		Timeout: apidefaults.DefaultDialTimeout,
+	}
+	serverConn, err := dialer.DialContext(ctx, addr.AddrNetwork, addr.String())
 	if err != nil {
 		return trace.Wrap(err)
 	}

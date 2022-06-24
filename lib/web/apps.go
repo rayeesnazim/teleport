@@ -69,6 +69,7 @@ func (h *Handler) clusterAppsGet(w http.ResponseWriter, r *http.Request, p httpr
 		if !server.GetApp().IsTCP() {
 			apps = append(apps, server.GetApp())
 		}
+		apps = append(apps, server.GetApp())
 	}
 
 	return listResourcesGetResponse{
