@@ -103,8 +103,8 @@ $ teleport db configure create \
 | - | - |
 | `--proxy` | Teleport Proxy Service address to connect to. Default: `0.0.0.0:3080`. |
 | `--token` | Invitation token to register with the Auth Service. Default: none. |
-| `--rds-discovery` | List of AWS regions the agent will discover for RDS/Aurora instances. |
-| `--redshift-discovery` | List of AWS regions the agent will discover for Redshift instances. |
+| `--rds-discovery` | List of AWS regions the Database Service will discover for RDS/Aurora instances. |
+| `--redshift-discovery` | List of AWS regions the Database Service will discover for Redshift instances. |
 | `--ca-pin` | CA pin to validate the Auth Service (can be repeated for multiple pins). |
 | `--name` | Name of the proxied database. |
 | `--protocol` | Proxied database protocol. Supported are: `[postgres mysql mongodb cockroachdb redis sqlserver]`. |
@@ -114,7 +114,8 @@ $ teleport db configure create \
 
 ## teleport db configure bootstrap
 
-Bootstrap the necessary configuration for the database agent. It reads the provided agent configuration to determine what will be bootstrapped.
+Bootstrap the necessary configuration for the Database Service. It reads the
+provided configuration to determine what will be bootstrapped.
 
 ```code
 $ teleport db configure bootstrap -c /etc/teleport.yaml --attach-to-user TeleportUser
