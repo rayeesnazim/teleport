@@ -48,40 +48,66 @@ func NewProcessStorage(ctx context.Context, path string) (*ProcessStorage, error
 		return nil, trace.Wrap(err)
 	}
 
+	// if running in a K8S cluster the agent will automatically switch state storage from local sqlite into a Kubernetes Secret.
 	if kubernetes.InKubeCluster() {
-		kubeSecret, err := kubernetes.New()
+		kubeStorage, err := kubernetes.New()
 		if err != nil {
 			return nil, trace.Wrap(err)
 		}
 
-		if !kubeSecret.Exists(ctx) {
-			compatibilityLayer(ctx, kubeSecret, litebk)
+		// if secret does not exist and storage was available, the agent reads previously stored identities in SQLite and
+		// dumps them into Kubernetes Secret.
+		// TODO(tigrato): remove this once the compatibility layer between local storage and Kube secret storage is no longer required!
+		if !kubeStorage.Exists(ctx) {
+			if err := copyLocalStorageIntoKubernetes(ctx, kubeStorage, litebk); err != nil {
+				return nil, trace.Wrap(err)
+			}
 		}
 
-		identityStorage = kubeSecret
+		identityStorage = kubeStorage
 	} else {
 		identityStorage = litebk
 	}
 
-	return &ProcessStorage{Backend: litebk, stateStorage: identityStorage}, nil
+	return &ProcessStorage{BackendStorage: litebk, stateStorage: identityStorage}, nil
 }
 
-func compatibilityLayer(ctx context.Context, stateBk stateBackend, litebk *lite.Backend) {
-	copyDataFromLocalIntoKube(ctx, stateBk, litebk, idsPrefix)
-	copyDataFromLocalIntoKube(ctx, stateBk, litebk, statesPrefix)
+// copyLocalStorageIntoKubernetes reads every `identity` and `state` keys from local storage
+// and copies them into Kubernetes Secret. This code is executed only when the agent starts and the
+// secret was not yet created in K8S. Subsequent restarts of the agent won't execute this
+// TODO(tigrato): remove this once the compatibility layer between local storage and
+// Kube secret storage is no longer required!
+func copyLocalStorageIntoKubernetes(ctx context.Context, k8sStorage *kubernetes.Backend, litebk *lite.Backend) error {
+	// read keys starting with `/ids`, e.g. `/ids/{role}/{current,replacement}`
+	idsStorage := readPrefixedKeysFromLocalStorage(ctx, litebk, idsPrefix)
 
+	// read keys starting with `/states` `/states/{role}/state`
+	stateStorage := readPrefixedKeysFromLocalStorage(ctx, litebk, statesPrefix)
+
+	// if no keys where found, this is a fresh start.
+	if len(idsStorage) == 0 && len(stateStorage) == 0 {
+		return nil
+	}
+
+	// store keys in K8S Secret
+	return k8sStorage.PutItems(ctx, append(idsStorage, stateStorage...)...)
 }
 
-func copyDataFromLocalIntoKube(ctx context.Context, stateBk stateBackend, litebk *lite.Backend, prefix string) {
-	results, err := litebk.GetRange(ctx, backend.Key(prefix), backend.RangeEnd(backend.Key(prefix)), backend.NoLimit)
+// readPrefixedKeysFromLocalStorage reads every key from local storage whose key starts with `prefix`.
+// If no values were found, it returns empty and ignores any error.
+// TODO(tigrato): remove this once the compatibility layer between local storage and Kube secret storage is no longer required!
+func readPrefixedKeysFromLocalStorage(ctx context.Context, litebk *lite.Backend, prefix string) (items []backend.Item) {
+	results, err := litebk.GetRange(
+		ctx,
+		backend.Key(prefix),
+		backend.RangeEnd(
+			backend.Key(prefix),
+		),
+		backend.NoLimit,
+	)
 	if err != nil {
 		return
 	}
-	for _, item := range results.Items {
-		if _, err := stateBk.Put(ctx, item); err != nil {
-			// TODO: log this lines
-			_ = err
-		}
-	}
 
+	return results.Items
 }

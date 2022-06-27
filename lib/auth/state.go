@@ -47,15 +47,15 @@ type stateBackend interface {
 // it helps to manage rotation for certificate authorities
 // and keeps local process credentials - x509 and SSH certs and keys.
 type ProcessStorage struct {
-	Backend      backend.Backend
-	stateStorage stateBackend
+	BackendStorage backend.Backend
+	stateStorage   stateBackend
 }
 
 // Close closes all resources used by process storage backend.
 func (p *ProcessStorage) Close() error {
 	// we do not need to close identity storage because it's either the same as backend or it's kubernetes
 	// which does not require any close method
-	return p.Backend.Close()
+	return p.BackendStorage.Close()
 }
 
 const (
