@@ -132,7 +132,7 @@ func Run(options Options) (app *kingpin.Application, executedCommand string, con
 	start.Flag("permit-user-env",
 		"Enables reading of ~/.tsh/environment when creating a session").BoolVar(&ccf.PermitUserEnvironment)
 	start.Flag("insecure",
-		"Insecure mode disables certificate validation").BoolVar(&ccf.InsecureMode)
+		"Insecure mode disables certificate validation for trusted clusters").BoolVar(&ccf.InsecureMode)
 	start.Flag("fips",
 		"Start Teleport in FedRAMP/FIPS 140-2 mode.").
 		Default("false").
