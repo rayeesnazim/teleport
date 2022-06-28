@@ -160,23 +160,36 @@ func (b *Backend) readSecretData(ctx context.Context, key []byte) (*backend.Item
 
 func (b *Backend) updateSecretContent(ctx context.Context, items ...backend.Item) (*backend.Lease, error) {
 	// TODO: add retry if someone changed the secret in the meanwhile
-	secret, err := b.getSecret(ctx)
-	if err != nil {
-		secret, err = b.createSecret(ctx)
+	var (
+		err    error
+		secret *corev1.Secret
+	)
+	for i := 0; i < 3; i++ {
+
+		secret, err = b.getSecret(ctx)
 		if err != nil {
-			return nil, trace.Wrap(err)
+			secret, err = b.createSecret(ctx)
+			if err != nil {
+				return nil, trace.Wrap(err)
+			}
 		}
+
+		if secret.StringData == nil {
+			secret.StringData = map[string]string{}
+		}
+
+		for _, item := range items {
+			secret.StringData[string(item.Key)] = string(item.Value)
+		}
+
+		err = b.updateSecret(ctx, secret)
+		if err == nil {
+			break
+		}
+
 	}
 
-	if secret.StringData == nil {
-		secret.StringData = map[string]string{}
-	}
-
-	for _, item := range items {
-		secret.StringData[string(item.Key)] = string(item.Value)
-	}
-
-	if err := b.updateSecret(ctx, secret); err != nil {
+	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 
@@ -203,6 +216,7 @@ func (b *Backend) createSecret(ctx context.Context) (*corev1.Secret, error) {
 		helmReleaseNameAnnotation     = "meta.helm.sh/release-name"
 		helmReleaseNamesaceAnnotation = "meta.helm.sh/release-namespace"
 		helmK8SManaged                = "app.kubernetes.io/managed-by"
+		helmResourcePolicy            = "helm.sh/resource-policy"
 	)
 	secretApply := applyconfigv1.Secret(b.secretName, b.namespace).
 		WithStringData(map[string]string{}).
@@ -212,7 +226,7 @@ func (b *Backend) createSecret(ctx context.Context) (*corev1.Secret, error) {
 		WithAnnotations(map[string]string{
 			helmReleaseNameAnnotation:     os.Getenv(releaseNameEnv),
 			helmReleaseNamesaceAnnotation: os.Getenv(namespaceEnv),
-			// TODO: add label to keep secret
+			//	helmResourcePolicy:            "keep",
 		})
 
 	return b.k8sClientSet.
