@@ -6,6 +6,8 @@ tests:
   - it: creates a StatefulSet
     values:
       - ../.lint/stateful.yaml
+    elease:
+      isupgrade: true
     asserts:
       - isKind:
           of: StatefulSet
@@ -243,6 +245,20 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
+            name: TELEPORT_REPLICA_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: KUBE_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
             name: HTTPS_PROXY
             value: "http://username:password@my.proxy.host:3128"
       - matchSnapshot:
@@ -338,18 +354,32 @@ tests:
       - matchSnapshot:
           path: spec.template.spec
 
-  - it: should add volumeClaimTemplate for data volume when using StatefulSet
+  - it: should add volumeClaimTemplate for data volume when using StatefulSet and action is an Upgrade
     values:
       - ../.lint/stateful.yaml
+    release:
+      isupgrade: true
     asserts:
       - isNotNull:
           path: spec.volumeClaimTemplates[0].spec
       - matchSnapshot:
           path: spec.template.spec
 
-  - it: should set storage.storageClassName when set in values
+  - it: shouldn't add volumeClaimTemplate for data volume when using StatefulSet and is Fresh Install
     values:
       - ../.lint/stateful.yaml
+    release:
+      isupgrade: false
+    asserts:
+      - isNull:
+          path: spec.volumeClaimTemplates
+      - matchSnapshot: {}
+
+  - it: should set storage.storageClassName when set in values and action is an Upgrade
+    values:
+      - ../.lint/stateful.yaml
+    release:
+      isupgrade: true
     set:
       storage:
         storageClassName: helm-lint-storage-class
@@ -360,9 +390,11 @@ tests:
       - matchSnapshot:
           path: spec.template.spec
 
-  - it: should set storage.requests when set in values
+  - it: should set storage.requests when set in values and action is an Upgrade
     values:
       - ../.lint/stateful.yaml
+    release:
+      isupgrade: true
     set:
       storage:
         requests: 256Mi
@@ -406,5 +438,38 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.timeoutSeconds
           value: 5
+      - matchSnapshot:
+          path: spec.template.spec
+
+  - it: should install Statefulset when storage is disabled and installation is a Fresh Install
+    release:
+      isupgrade: false
+    values:
+      - ../.lint/stateful.yaml
+    set:
+      storage: 
+        enable: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: TELEPORT_REPLICA_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: KUBE_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: RELEASE-NAME-teleport-data
+      - isNull:
+          path: spec.volumeClaimTemplates
       - matchSnapshot:
           path: spec.template.spec

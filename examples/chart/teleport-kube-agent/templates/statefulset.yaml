@@ -113,7 +113,9 @@ spec:
         {{- if .Values.imagePullPolicy }}
         imagePullPolicy: {{ toYaml .Values.imagePullPolicy }}
         {{- end }}
+        {{- if or .Release.IsInstall  .Values.extraEnv }}
         env:
+          {{- if .Release.IsInstall }}
           - name: TELEPORT_REPLICA_NAME
             valueFrom:
               fieldRef:
@@ -122,8 +124,10 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-        {{- if .Values.extraEnv }}
-          {{- toYaml .Values.extraEnv | nindent 10 }}
+          {{- end }}
+          {{- if .Values.extraEnv }}
+            {{- toYaml .Values.extraEnv | nindent 10 }}
+          {{- end }}
         {{- end }}
         args:
         - "--diag-addr=0.0.0.0:3000"
@@ -172,7 +176,7 @@ spec:
         - mountPath: /etc/teleport-secrets
           name: "auth-token"
           readOnly: true
-{{- if .Values.storage.enabled }}
+{{- if and .Values.storage.enabled .Release.IsUpgrade }}
         - mountPath: /var/lib/teleport
           name: "{{ .Release.Name }}-teleport-data"
 {{- end }}
@@ -189,7 +193,7 @@ spec:
 {{- if .Values.extraVolumes }}
   {{- toYaml .Values.extraVolumes | nindent 6 }}
 {{- end }}
-{{- if .Values.storage.enabled }}
+{{- if and .Values.storage.enabled  .Release.IsUpgrade }}
   volumeClaimTemplates:
   - metadata:
       name: "{{ .Release.Name }}-teleport-data"
